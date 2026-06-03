@@ -3,9 +3,6 @@ import os
 import smtplib
 from datetime import datetime
 from email.mime.text import MIMEText
-from dotenv import load_dotenv
-
-load_dotenv()
 
 FEEDS = [
     "https://feeds.feedburner.com/TheHackersNews",
