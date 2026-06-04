@@ -12,7 +12,6 @@ FEEDS = [
 
 seen = set()
 
-
 # ----------------------------
 # CLASSIFICATION
 # ----------------------------
@@ -44,26 +43,60 @@ def classify(title):
 
 
 # ----------------------------
-# SEVERITY + CVE DETECTION
+# IMPACT SUMMARY
 # ----------------------------
-def extract_severity(title):
+def summarize(title):
     t = title.lower()
 
-    cve = re.findall(r"cve-\d{4}-\d+", t)
+    if "ransomware" in t:
+        return "Potential operational disruption and data encryption risk."
 
-    if cve:
-        return "CRITICAL", cve[0].upper()
+    if "breach" in t or "leak" in t or "exposed" in t:
+        return "Sensitive data exposure and credential compromise risk."
 
-    if any(x in t for x in ["ransomware", "zero-day", "0day", "exploit"]):
-        return "CRITICAL", None
+    if "zero-day" in t or "0day" in t or "exploit" in t:
+        return "Active exploitation risk before patch availability."
 
-    if any(x in t for x in ["breach", "leak", "compromised"]):
-        return "HIGH", None
+    if "cve" in t:
+        return "Known vulnerability requiring immediate patching."
 
-    if any(x in t for x in ["patch", "update", "advisory"]):
-        return "MEDIUM", None
+    if "malware" in t or "trojan" in t:
+        return "Malicious software activity targeting systems or users."
 
-    return "LOW", None
+    return "General cybersecurity development with limited immediate impact."
+
+
+# ----------------------------
+# RISK SCORING
+# ----------------------------
+def risk_score(article):
+    title = article["title"].lower()
+
+    score = 0
+
+    if article["severity"] == "CRITICAL":
+        score += 5
+    elif article["severity"] == "HIGH":
+        score += 3
+    elif article["severity"] == "MEDIUM":
+        score += 2
+    else:
+        score += 1
+
+    if "ransomware" in title:
+        score += 3
+    if "zero-day" in title or "0day" in title:
+        score += 3
+    if "breach" in title or "leak" in title:
+        score += 2
+    if "cve" in title:
+        score += 2
+
+    return score
+
+
+def top_risks(articles):
+    return sorted(articles, key=risk_score, reverse=True)[:3]
 
 
 # ----------------------------
@@ -71,7 +104,6 @@ def extract_severity(title):
 # ----------------------------
 def get_articles():
     articles = []
-
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=1)
 
@@ -94,25 +126,25 @@ def get_articles():
                 continue
 
             category = classify(title)
-            severity, cve = extract_severity(title)
+
+            # simple severity mapping for display
+            severity = "LOW"
+            if "ransomware" in title.lower() or "zero-day" in title.lower():
+                severity = "CRITICAL"
+            elif "breach" in title.lower() or "leak" in title.lower():
+                severity = "HIGH"
+            elif "patch" in title.lower():
+                severity = "MEDIUM"
 
             articles.append({
                 "title": title,
                 "link": entry.link,
                 "category": category,
                 "severity": severity,
-                "cve": cve,
                 "source": url
             })
 
     return articles
-
-
-# ----------------------------
-# TOP CRITICAL THREATS
-# ----------------------------
-def top_critical(articles):
-    return [a for a in articles if a["severity"] == "CRITICAL"][:3]
 
 
 # ----------------------------
@@ -125,18 +157,22 @@ def build_brief(articles):
     <hr>
     """
 
-    top = top_critical(articles)
+    # TOP RISKS
+    top = top_risks(articles)
 
     if top:
-        html += "<h3>🔥 Top 3 Critical Threats</h3><ul>"
+        html += "<h3>🔥 Top Risk of the Day</h3><ol>"
+
         for a in top:
             html += f"""
             <li>
-                <b>{a['title']}</b>
-                <br><a href="{a['link']}">Read more</a>
+                <b>{a['severity']}</b> — {a['title']}
+                <br><i>{summarize(a['title'])}</i>
+                <br><a href="{a['link']}">Source</a>
             </li>
             """
-        html += "</ul><hr>"
+
+        html += "</ol><hr>"
 
     groups = {
         "THREATS": [],
@@ -162,11 +198,10 @@ def build_brief(articles):
         html += f"<h3>{icon} {section}</h3><ul>"
 
         for a in items:
-            cve_text = f" ({a['cve']})" if a["cve"] else ""
-
             html += f"""
             <li>
-                <b>{a['severity']}</b> — {a['title']}{cve_text}
+                <b>{a['severity']}</b> — {a['title']}
+                <br><i>{summarize(a['title'])}</i>
                 <br><a href="{a['link']}">Source</a>
             </li>
             """
