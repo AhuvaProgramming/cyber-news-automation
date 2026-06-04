@@ -15,28 +15,25 @@ from datetime import datetime, timezone, timedelta
 def classify(title):
     t = title.lower()
 
-    # BREACHES (damage already happened)
-    if any(x in t for x in [
-        "breach", "leak", "exposed", "stolen", "compromised",
-        "data leak", "unauthorized access"
-    ]):
+    breach_score = sum(x in t for x in [
+        "breach", "leak", "exposed", "compromised",
+        "database", "credentials", "records", "dump"
+    ])
+
+    threat_score = sum(x in t for x in [
+        "ransomware", "zero-day", "0day", "cve-", "exploit", "malware"
+    ])
+
+    advisory_score = sum(x in t for x in [
+        "patch", "update", "advisory", "fix"
+    ])
+
+    if breach_score > max(threat_score, advisory_score):
         return "BREACHES"
 
-    # ADVISORIES (defensive info / patches)
-    if any(x in t for x in [
-        "patch", "update", "advisory", "fix", "vulnerability patch",
-        "security update", "cve patch"
-    ]):
+    if advisory_score > threat_score:
         return "ADVISORIES"
 
-    # THREATS (active or potential attacks)
-    if any(x in t for x in [
-        "ransomware", "zero-day", "0day", "cve-", "exploit",
-        "malware", "botnet", "trojan", "phishing", "attack"
-    ]):
-        return "THREATS"
-
-    # default fallback
     return "THREATS"
 
 
