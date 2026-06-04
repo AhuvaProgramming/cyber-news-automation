@@ -9,18 +9,27 @@ FEEDS = [
     "https://krebsonsecurity.com/feed/",
 ]
 
+from datetime import datetime, timezone
 
 def get_articles():
     articles = []
+    today = datetime.now(timezone.utc).date()
 
     for url in FEEDS:
         feed = feedparser.parse(url)
 
-        for entry in feed.entries[:5]:
-            articles.append(entry.title)
+        for entry in feed.entries:
+            # try to get published date
+            if hasattr(entry, "published_parsed") and entry.published_parsed:
+                published_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc).date()
+            else:
+                continue  # skip if no date
+
+            # only keep today's articles
+            if published_date == today:
+                articles.append(entry.title)
 
     return articles[:10]
-
 
 def build_brief(headlines):
     text = f"🛡️ Daily Cyber Brief — {datetime.now().strftime('%Y-%m-%d')}\n\n"
