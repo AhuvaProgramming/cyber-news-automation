@@ -57,12 +57,12 @@ def get_articles():
             if published >= cutoff:
                 category = classify(entry.title)
 
-articles.append({
-    "title": entry.title,
-    "link": entry.link,
-    "category": category,
-    "source": url
-})
+                articles.append({
+                    "title": entry.title,
+                    "link": entry.link,
+                    "category": category,
+                    "source": url
+                })
 
     return articles[:10]
 def build_brief(articles):
