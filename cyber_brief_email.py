@@ -151,10 +151,13 @@ def get_articles():
 # BUILD EMAIL
 # ----------------------------
 def build_brief(articles):
+    summary = executive_summary(articles)
     html = f"""
-    <h2>🛡️ Cyber Intelligence Brief</h2>
-    <p><b>Date:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
-    <hr>
+   <h2>🛡️ Cyber Intelligence Brief</h2>
+   <p><b>Date:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
+   <h3>🧠 Executive Summary</h3>
+   <p>{summary}</p>
+   <hr>
     """
 
     # TOP RISKS
@@ -209,6 +212,32 @@ def build_brief(articles):
         html += "</ul>"
 
     return html
+def executive_summary(articles):
+    threats = sum(1 for a in articles if a["category"] == "THREATS")
+    breaches = sum(1 for a in articles if a["category"] == "BREACHES")
+    advisories = sum(1 for a in articles if a["category"] == "ADVISORIES")
+
+    critical = sum(1 for a in articles if a["severity"] == "CRITICAL")
+    high = sum(1 for a in articles if a["severity"] == "HIGH")
+
+    summary = "🧠 Executive Summary: "
+
+    if critical > 0:
+        summary += f"{critical} critical security events detected, indicating elevated active threat activity. "
+    else:
+        summary += "No critical incidents observed in the last 24 hours. "
+
+    if threats > breaches:
+        summary += "Threat activity dominates the landscape, with ongoing exploitation attempts and malware campaigns. "
+    elif breaches > 0:
+        summary += "Multiple breach-related incidents indicate continued exposure of sensitive data. "
+
+    if advisories > 0:
+        summary += "Several vendor advisories suggest active patching cycles across major platforms. "
+
+    summary += "Organizations should prioritize patching critical vulnerabilities and monitoring for active exploit attempts."
+
+    return summary
 
 
 # ----------------------------
