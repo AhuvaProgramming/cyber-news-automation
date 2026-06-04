@@ -15,28 +15,29 @@ from datetime import datetime, timezone, timedelta
 def classify(title):
     t = title.lower()
 
-    # Categories + severity heuristics
-    if any(x in t for x in ["ransomware", "zero-day", "0day", "cve-", "exploit"]):
-        category = "Vulnerability / Exploit"
-        severity = "CRITICAL"
+    # BREACHES (damage already happened)
+    if any(x in t for x in [
+        "breach", "leak", "exposed", "stolen", "compromised",
+        "data leak", "unauthorized access"
+    ]):
+        return "BREACHES"
 
-    elif any(x in t for x in ["breach", "leak", "stolen", "exposed"]):
-        category = "Data Breach"
-        severity = "HIGH"
+    # ADVISORIES (defensive info / patches)
+    if any(x in t for x in [
+        "patch", "update", "advisory", "fix", "vulnerability patch",
+        "security update", "cve patch"
+    ]):
+        return "ADVISORIES"
 
-    elif any(x in t for x in ["malware", "trojan", "botnet", "virus"]):
-        category = "Malware"
-        severity = "HIGH"
+    # THREATS (active or potential attacks)
+    if any(x in t for x in [
+        "ransomware", "zero-day", "0day", "cve-", "exploit",
+        "malware", "botnet", "trojan", "phishing", "attack"
+    ]):
+        return "THREATS"
 
-    elif any(x in t for x in ["update", "patch", "advisory"]):
-        category = "Security Advisory"
-        severity = "MEDIUM"
-
-    else:
-        category = "General Cyber News"
-        severity = "LOW"
-
-    return category, severity
+    # default fallback
+    return "THREATS"
 
 
 def get_articles():
@@ -54,39 +55,49 @@ def get_articles():
                 continue
 
             if published >= cutoff:
-                category, severity = classify(entry.title)
+                category = classify(entry.title)
 
-                articles.append({
-                    "title": entry.title,
-                    "link": entry.link,
-                    "category": category,
-                    "severity": severity,
-                    "source": url
-                })
+articles.append({
+    "title": entry.title,
+    "link": entry.link,
+    "category": category,
+    "source": url
+})
 
     return articles[:10]
 def build_brief(articles):
     html = f"""
-    <h2>🛡️ Daily Cyber Security Brief</h2>
+    <h2>🛡️ Cyber Security Intelligence Brief</h2>
     <p><b>Date:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
     <hr>
     """
 
-    # Group by severity
-    order = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+    groups = {
+        "THREATS": [],
+        "BREACHES": [],
+        "ADVISORIES": []
+    }
 
-    for level in order:
-        section = [a for a in articles if a["severity"] == level]
+    for a in articles:
+        groups[a["category"]].append(a)
 
-        if not section:
+    order = [
+        ("THREATS", "🚨"),
+        ("BREACHES", "🧨"),
+        ("ADVISORIES", "🛠️")
+    ]
+
+    for section, icon in order:
+        items = groups[section]
+
+        if not items:
             continue
 
-        html += f"<h3>⚠️ {level}</h3><ul>"
+        html += f"<h3>{icon} {section}</h3><ul>"
 
-        for a in section:
+        for a in items:
             html += f"""
             <li>
-                <b>[{a['category']}]</b>
                 <a href="{a['link']}">{a['title']}</a>
                 <br><small>{a['source']}</small>
             </li>
