@@ -8,7 +8,36 @@ FEEDS = [
     "https://feeds.feedburner.com/TheHackersNews",
     "https://krebsonsecurity.com/feed/",
 ]
+
+import re
 from datetime import datetime, timezone, timedelta
+
+def classify(title):
+    t = title.lower()
+
+    # Categories + severity heuristics
+    if any(x in t for x in ["ransomware", "zero-day", "0day", "cve-", "exploit"]):
+        category = "Vulnerability / Exploit"
+        severity = "CRITICAL"
+
+    elif any(x in t for x in ["breach", "leak", "stolen", "exposed"]):
+        category = "Data Breach"
+        severity = "HIGH"
+
+    elif any(x in t for x in ["malware", "trojan", "botnet", "virus"]):
+        category = "Malware"
+        severity = "HIGH"
+
+    elif any(x in t for x in ["update", "patch", "advisory"]):
+        category = "Security Advisory"
+        severity = "MEDIUM"
+
+    else:
+        category = "General Cyber News"
+        severity = "LOW"
+
+    return category, severity
+
 
 def get_articles():
     articles = []
@@ -24,18 +53,48 @@ def get_articles():
             else:
                 continue
 
-            # last 24 hours instead of strict "today"
             if published >= cutoff:
-                articles.append(entry.title)
+                category, severity = classify(entry.title)
+
+                articles.append({
+                    "title": entry.title,
+                    "link": entry.link,
+                    "category": category,
+                    "severity": severity,
+                    "source": url
+                })
 
     return articles[:10]
-def build_brief(headlines):
-    text = f"🛡️ Daily Cyber Brief — {datetime.now().strftime('%Y-%m-%d')}\n\n"
+def build_brief(articles):
+    html = f"""
+    <h2>🛡️ Daily Cyber Security Brief</h2>
+    <p><b>Date:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
+    <hr>
+    """
 
-    for i, title in enumerate(headlines, 1):
-        text += f"{i}. {title}\n"
+    # Group by severity
+    order = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
 
-    return text
+    for level in order:
+        section = [a for a in articles if a["severity"] == level]
+
+        if not section:
+            continue
+
+        html += f"<h3>⚠️ {level}</h3><ul>"
+
+        for a in section:
+            html += f"""
+            <li>
+                <b>[{a['category']}]</b>
+                <a href="{a['link']}">{a['title']}</a>
+                <br><small>{a['source']}</small>
+            </li>
+            """
+
+        html += "</ul>"
+
+    return html
 
 
 def send_email(content):
@@ -43,21 +102,16 @@ def send_email(content):
     password = os.getenv("EMAIL_PASSWORD")
     receiver = os.getenv("EMAIL_RECEIVER")
 
-    msg = MIMEText(content)
-    msg["Subject"] = "🛡️ Daily Cyber Brief"
+    msg = MIMEText(content, "html")  # IMPORTANT CHANGE
+    msg["Subject"] = "🛡️ Daily Cyber Intelligence Brief"
     msg["From"] = sender
     msg["To"] = receiver
 
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender, password)
-            server.send_message(msg)
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(sender, password)
+        server.send_message(msg)
 
-        print("✅ Email sent successfully")
-
-    except Exception as e:
-        print("❌ Email failed:", e)
-
+    print("Email sent successfully")
 
 def main():
     headlines = get_articles()
