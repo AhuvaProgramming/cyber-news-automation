@@ -8,29 +8,27 @@ FEEDS = [
     "https://feeds.feedburner.com/TheHackersNews",
     "https://krebsonsecurity.com/feed/",
 ]
-
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 def get_articles():
     articles = []
-    today = datetime.now(timezone.utc).date()
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=1)
 
     for url in FEEDS:
         feed = feedparser.parse(url)
 
         for entry in feed.entries:
-            # try to get published date
             if hasattr(entry, "published_parsed") and entry.published_parsed:
-                published_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc).date()
+                published = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
             else:
-                continue  # skip if no date
+                continue
 
-            # only keep today's articles
-            if published_date == today:
+            # last 24 hours instead of strict "today"
+            if published >= cutoff:
                 articles.append(entry.title)
 
     return articles[:10]
-
 def build_brief(headlines):
     text = f"🛡️ Daily Cyber Brief — {datetime.now().strftime('%Y-%m-%d')}\n\n"
 
