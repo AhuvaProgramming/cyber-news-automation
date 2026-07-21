@@ -220,7 +220,7 @@ def executive_summary(articles):
     critical = sum(1 for a in articles if a["severity"] == "CRITICAL")
     high = sum(1 for a in articles if a["severity"] == "HIGH")
 
-    summary = "🧠 Executive Summary: "
+    summary = " Executive Summary: "
 
     if critical > 0:
         summary += f"{critical} critical security events detected, indicating elevated active threat activity. "
