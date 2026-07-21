@@ -155,7 +155,7 @@ def build_brief(articles):
     html = f"""
    <h2>🛡️ Cyber Intelligence Brief</h2>
    <p><b>Date:</b> {datetime.now().strftime('%Y-%m-%d')}</p>
-   <h3>🧠 Executive Summary</h3>
+   <h3> Executive Summary</h3>
    <p>{summary}</p>
    <hr>
     """
